@@ -19,6 +19,8 @@ interface Props {
 export function StepConfirm({ formData, vehicle, onPrev }: Props) {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [reference, setReference] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const days = formData.pickupDate && formData.returnDate
     ? Math.max(
@@ -35,10 +37,36 @@ export function StepConfirm({ formData, vehicle, onPrev }: Props) {
 
   async function handleSubmit() {
     setLoading(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
-    setSubmitted(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vehicleId: formData.vehicleId,
+          pickupLocation: formData.pickupLocation,
+          returnLocation: formData.returnLocation || formData.pickupLocation,
+          pickupDate: formData.pickupDate,
+          returnDate: formData.returnDate,
+          pickupTime: formData.pickupTime,
+          returnTime: formData.returnTime,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          driverLicense: formData.driverLicense,
+          specialRequests: formData.specialRequests,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Booking failed");
+      setReference(json.reference);
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (submitted) {
@@ -59,7 +87,7 @@ export function StepConfirm({ formData, vehicle, onPrev }: Props) {
           Our team will be in touch within 2 hours to finalize your booking.
         </p>
         <div className="p-4 bg-white/5 rounded-xl text-sm text-gray-400 mb-8">
-          <p>Booking Reference: <span className="text-white font-mono">UCL-{Date.now().toString().slice(-6)}</span></p>
+          <p>Booking Reference: <span className="text-white font-mono">{reference}</span></p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
@@ -170,7 +198,13 @@ export function StepConfirm({ formData, vehicle, onPrev }: Props) {
         </div>
       </div>
 
-      <div className="mt-8 flex justify-between">
+      {error && (
+        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      <div className="mt-6 flex justify-between">
         <button
           onClick={onPrev}
           className="flex items-center gap-2 px-6 py-3 border border-white/20 hover:border-white/40 text-gray-400 hover:text-white font-medium rounded-xl transition-colors"

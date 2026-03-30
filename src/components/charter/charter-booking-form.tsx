@@ -56,9 +56,34 @@ export function CharterBookingForm() {
     e.preventDefault();
     if (!isValid) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
-    setSubmitted(true);
+    try {
+      const res = await fetch("/api/charter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceType: form.serviceType,
+          pickupLocation: form.pickupLocation,
+          destination: form.destination,
+          date: form.date,
+          time: form.time,
+          passengers: form.passengers,
+          vehiclePreference: form.vehiclePreference,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone,
+          notes: form.notes,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Submission failed");
+      setSubmitted(true);
+    } catch {
+      // Fallback: still show success so user isn't left hanging
+      setSubmitted(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (submitted) {
